@@ -1,0 +1,578 @@
+Estructura del Proyecto: Accessible Design Exporter
+Aquí te presento una estructura revisada del proyecto, incorporando la forma de manejo de estilos y la organización modular que discutimos:
+Copy/accessible-design-exporter/
+│── manifest.json              # Configuración del plugin
+│── src/
+│   ├── main/                  # Código que se ejecuta en el entorno de Figma
+│   │   ├── code.ts            # Punto de entrada principal
+│   │   ├── node-parser.ts     # Analizador de nodos de Figma
+│   │   ├── component-detector.ts  # Detección de tipos de componentes
+│   │   └── design-extractor.ts    # Extracción de estilos y propiedades
+│   │
+│   ├── ui/                    # Código de la interfaz de usuario
+│   │   ├── ui.html            # Estructura HTML base
+│   │   ├── ui.ts              # Lógica principal de la UI
+│   │   ├── components/        # Componentes de la UI
+│   │   │   ├── modal.ts       # Componente modal
+│   │   │   ├── preview.ts     # Vista previa de componentes
+│   │   │   ├── steps.ts       # Navegación por pasos
+│   │   │   └── export-panel.ts # Panel de exportación
+│   │   │
+│   │   └── styles/            # Estilos separados por funcionalidad
+│   │       ├── base.ts        # Estilos base
+│   │       ├── buttons.ts     # Estilos de botones
+│   │       ├── modal.ts       # Estilos del modal
+│   │       ├── steps.ts       # Estilos de navegación por pasos
+│   │       └── preview.ts     # Estilos de la vista previa
+│   │
+│   ├── generators/            # Generadores de código
+│   │   ├── html-generator.ts  # Generador de HTML
+│   │   ├── react-generator.ts # Generador de React
+│   │   ├── vue-generator.ts   # Generador de Vue
+│   │   └── webcomponent-generator.ts # Generador de Web Components
+│   │
+│   ├── accessibility/         # Funcionalidades de accesibilidad
+│   │   ├── aria-mapper.ts     # Mapeo de atributos ARIA
+│   │   ├── contrast-checker.ts # Verificador de contraste
+│   │   └── wcag-validator.ts  # Validador de normas WCAG
+│   │
+│   └── utils/                 # Utilidades comunes
+│       ├── style-converter.ts # Convertidor de estilos Figma a CSS
+│       ├── semantic-tags.ts   # Mapeo de elementos a tags semánticos
+│       └── message-handler.ts # Manejo de mensajes entre main y UI
+│
+├── webpack.config.js          # Configuración de Webpack
+├── tsconfig.json              # Configuración de TypeScript
+└── package.json               # Dependencias y scripts
+
+
+
+Ejemplo básico de implementación
+A continuación, un ejemplo de cómo sería la implementación básica de los archivos principales:
+1. code.ts (Código principal)
+typescriptCopy// src/main/code.ts
+import { parseNode } from './node-parser';
+import { detectComponentType } from './component-detector';
+import { extractDesignProperties } from './design-extractor';
+
+// Mostrar la UI
+figma.showUI(__html__, { width: 450, height: 600 });
+
+// Manejar mensajes de la UI
+figma.ui.onmessage = async (msg) => {
+  if (msg.type === 'select-frame') {
+    const selection = figma.currentPage.selection;
+    
+    if (selection.length === 0) {
+      figma.ui.postMessage({ 
+        type: 'error', 
+        message: 'Please select a frame or component' 
+      });
+      return;
+    }
+    
+    const node = selection[0];
+    
+    try {
+      // Analizar el nodo seleccionado
+      const nodeData = parseNode(node);
+      
+      // Detectar el tipo de componente (sugerencia)
+      const componentType = detectComponentType(node);
+      
+      // Extraer propiedades de diseño
+      const designProperties = await extractDesignProperties(node);
+      
+      // Enviar los datos a la UI
+      figma.ui.postMessage({ 
+        type: 'frame-selected',
+        nodeData,
+        componentType,
+        designProperties
+      });
+    } catch (error) {
+      figma.ui.postMessage({ 
+        type: 'error', 
+        message: error.message 
+      });
+    }
+  }
+  
+  // Otras acciones...
+};
+2. ui.html (Base HTML)
+htmlCopy<!-- src/ui/ui.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accessible Design Exporter</title>
+</head>
+<body>
+  <div id="app">
+    <!-- El contenido se insertará dinámicamente -->
+  </div>
+  <script src="ui.js"></script>
+</body>
+</html>
+3. ui.ts (Lógica de la UI)
+typescriptCopy// src/ui/ui.ts
+import { baseStyles } from './styles/base';
+import { buttonStyles } from './styles/buttons';
+import { modalStyles } from './styles/modal';
+import { stepsStyles } from './styles/steps';
+import { previewStyles } from './styles/preview';
+
+import { initSteps } from './components/steps';
+import { showModal } from './components/modal';
+import { renderPreview } from './components/preview';
+import { initExportPanel } from './components/export-panel';
+
+// Combinar todos los estilos
+const allStyles = `
+  ${baseStyles}
+  ${buttonStyles}
+  ${modalStyles}
+  ${stepsStyles}
+  ${previewStyles}
+`;
+
+// Inicializar la UI cuando el DOM esté listo
+document.addEventListener('DOMContentLoaded', () => {
+  // Insertar estilos
+  const styleSheet = document.createElement('style');
+  styleSheet.textContent = allStyles;
+  document.head.appendChild(styleSheet);
+  
+  // Crear estructura inicial
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="container">
+      <h1>Accessible Design Exporter</h1>
+      <p>Export your Figma designs as accessible, semantic code.</p>
+      
+      <div class="steps-container" id="steps-container"></div>
+      
+      <div class="content-area">
+        <div class="step-content" id="step-select">
+          <button id="select-frame-btn" class="button button-primary">
+            Select this frame
+          </button>
+        </div>
+        
+        <div class="step-content hidden" id="step-configure">
+          <!-- Se llenará dinámicamente -->
+        </div>
+        
+        <div class="step-content hidden" id="step-preview">
+          <!-- Se llenará dinámicamente -->
+        </div>
+        
+        <div class="step-content hidden" id="step-export">
+          <!-- Se llenará dinámicamente -->
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Inicializar componentes
+  initSteps(['Select Frame', 'Configure', 'Preview', 'Export']);
+  initEventListeners();
+});
+
+// Configurar escuchadores de eventos
+function initEventListeners() {
+  // Botón de selección de frame
+  document.getElementById('select-frame-btn').addEventListener('click', () => {
+    parent.postMessage({ 
+      pluginMessage: { type: 'select-frame' } 
+    }, '*');
+  });
+  
+  // Escuchar mensajes del código principal
+  window.onmessage = (event) => {
+    const msg = event.data.pluginMessage;
+    
+    if (!msg) return;
+    
+    switch (msg.type) {
+      case 'frame-selected':
+        handleFrameSelected(msg);
+        break;
+      case 'error':
+        showError(msg.message);
+        break;
+      // Otros tipos de mensajes...
+    }
+  };
+}
+
+// Manejar selección de frame
+function handleFrameSelected(data) {
+  // Mostrar el modal de configuración
+  showModal({
+    title: 'Configure Component',
+    content: `
+      <div class="form-group">
+        <label for="component-type">Component Type:</label>
+        <select id="component-type" class="select">
+          <option value="button">Button</option>
+          <option value="input">Input</option>
+          <option value="card">Card</option>
+          <option value="nav">Navigation</option>
+          <!-- Más opciones... -->
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label>Category:</label>
+        <div class="radio-group">
+          <label class="radio">
+            <input type="radio" name="category" value="atom" checked>
+            Atom
+          </label>
+          <label class="radio">
+            <input type="radio" name="category" value="molecule">
+            Molecule
+          </label>
+          <label class="radio">
+            <input type="radio" name="category" value="organism">
+            Organism
+          </label>
+        </div>
+      </div>
+    `,
+    onConfirm: (modalElement) => {
+      // Obtener valores seleccionados
+      const componentType = modalElement.querySelector('#component-type').value;
+      const category = modalElement.querySelector('input[name="category"]:checked').value;
+      
+      // Aquí procesaríamos estos datos y avanzaríamos al siguiente paso
+      configureComponent(data, componentType, category);
+    }
+  });
+}
+
+// Configurar el componente seleccionado
+function configureComponent(data, componentType, category) {
+  console.log('Configuring component:', { data, componentType, category });
+  
+  // Actualizar el estado y pasar al siguiente paso
+  // ...
+  
+  // Renderizar la vista previa
+  renderPreview(data, componentType, category);
+}
+
+// Mostrar mensaje de error
+function showError(message) {
+  showModal({
+    title: 'Error',
+    content: `<p class="error-message">${message}</p>`,
+    showCancel: false
+  });
+}
+4. Ejemplo de archivo de estilos
+typescriptCopy// src/ui/styles/base.ts
+export const baseStyles = `
+  body {
+    font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    margin: 0;
+    padding: 0;
+    color: #333;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  .container {
+    padding: 16px;
+  }
+  
+  h1 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  
+  .hidden {
+    display: none;
+  }
+  
+  .form-group {
+    margin-bottom: 16px;
+  }
+  
+  label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  
+  .select {
+    width: 100%;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #E5E5E5;
+  }
+  
+  .radio-group {
+    display: flex;
+    gap: 16px;
+  }
+  
+  .radio {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+  }
+  
+  .error-message {
+    color: #F24822;
+    font-weight: 500;
+  }
+`;
+5. Ejemplo de componente: Modal
+typescriptCopy// src/ui/components/modal.ts
+export function showModal({
+  title,
+  content,
+  onConfirm,
+  onCancel,
+  showCancel = true
+}) {
+  // Crear elemento del modal
+  const modalElement = document.createElement('div');
+  modalElement.className = 'modal';
+  
+  modalElement.innerHTML = `
+    <div class="modal-content">
+      <h2 class="modal-title">${title}</h2>
+      <div class="modal-body">
+        ${content}
+      </div>
+      <div class="modal-footer">
+        ${showCancel ? '<button class="button button-secondary modal-cancel">Cancel</button>' : ''}
+        <button class="button button-primary modal-confirm">Confirm</button>
+      </div>
+    </div>
+  `;
+  
+  // Añadir al DOM
+  document.body.appendChild(modalElement);
+  
+  // Configurar eventos
+  const confirmBtn = modalElement.querySelector('.modal-confirm');
+  confirmBtn.addEventListener('click', () => {
+    if (onConfirm) {
+      onConfirm(modalElement);
+    }
+    closeModal(modalElement);
+  });
+  
+  if (showCancel) {
+    const cancelBtn = modalElement.querySelector('.modal-cancel');
+    cancelBtn.addEventListener('click', () => {
+      if (onCancel) {
+        onCancel();
+      }
+      closeModal(modalElement);
+    });
+  }
+  
+  return modalElement;
+}
+
+function closeModal(modalElement) {
+  modalElement.classList.add('modal-closing');
+  setTimeout(() => {
+    document.body.removeChild(modalElement);
+  }, 300); // Duración de la animación
+}
+6. Ejemplo de parseNode (para extraer datos de Figma)
+typescriptCopy// src/main/node-parser.ts
+export function parseNode(node) {
+  // Estructura base para almacenar datos
+  const nodeData = {
+    id: node.id,
+    name: node.name,
+    type: node.type,
+    children: [],
+    properties: {
+      styles: {},
+      texts: [],
+      fills: [],
+      effects: []
+    }
+  };
+  
+  // Extraer datos según el tipo de nodo
+  switch (node.type) {
+    case "FRAME":
+    case "GROUP":
+    case "COMPONENT":
+    case "COMPONENT_SET":
+    case "INSTANCE":
+      // Procesar elementos contenedores
+      parseContainerNode(node, nodeData);
+      break;
+      
+    case "TEXT":
+      // Procesar nodo de texto
+      parseTextNode(node, nodeData);
+      break;
+      
+    case "RECTANGLE":
+    case "ELLIPSE":
+    case "POLYGON":
+    case "STAR":
+    case "LINE":
+    case "VECTOR":
+      // Procesar nodos de forma
+      parseShapeNode(node, nodeData);
+      break;
+      
+    // Otros tipos...
+  }
+  
+  return nodeData;
+}
+
+function parseContainerNode(node, nodeData) {
+  // Extraer estilos del contenedor
+  if ("layoutMode" in node) {
+    // Auto Layout
+    nodeData.properties.styles.layout = {
+      mode: node.layoutMode,
+      direction: node.primaryAxisAlignItems,
+      spacing: node.itemSpacing,
+      padding: {
+        top: node.paddingTop,
+        right: node.paddingRight,
+        bottom: node.paddingBottom,
+        left: node.paddingLeft
+      }
+    };
+  }
+  
+  // Extraer restricciones y tamaño
+  nodeData.properties.styles.constraints = {
+    horizontal: node.constraints?.horizontal,
+    vertical: node.constraints?.vertical
+  };
+  
+  nodeData.properties.styles.size = {
+    width: node.width,
+    height: node.height
+  };
+  
+  // Procesar hijos
+  if ("children" in node) {
+    node.children.forEach(child => {
+      nodeData.children.push(parseNode(child));
+    });
+  }
+}
+
+function parseTextNode(node, nodeData) {
+  // Extraer contenido de texto
+  nodeData.properties.texts.push({
+    content: node.characters,
+    style: {
+      fontFamily: node.fontName?.family,
+      fontWeight: node.fontName?.style,
+      fontSize: node.fontSize,
+      letterSpacing: node.letterSpacing,
+      lineHeight: node.lineHeight,
+      textCase: node.textCase,
+      textDecoration: node.textDecoration
+    }
+  });
+  
+  // Extraer rellenos para el color del texto
+  if (node.fills) {
+    node.fills.forEach(fill => {
+      if (fill.type === "SOLID" && fill.visible !== false) {
+        nodeData.properties.fills.push({
+          type: "color",
+          color: {
+            r: fill.color.r,
+            g: fill.color.g,
+            b: fill.color.b,
+            a: fill.opacity ?? 1
+          }
+        });
+      }
+    });
+  }
+}
+
+function parseShapeNode(node, nodeData) {
+  // Extraer rellenos
+  if (node.fills) {
+    node.fills.forEach(fill => {
+      if (fill.visible === false) return;
+      
+      if (fill.type === "SOLID") {
+        nodeData.properties.fills.push({
+          type: "color",
+          color: {
+            r: fill.color.r,
+            g: fill.color.g,
+            b: fill.color.b,
+            a: fill.opacity ?? 1
+          }
+        });
+      } else if (fill.type === "IMAGE") {
+        nodeData.properties.fills.push({
+          type: "image",
+          imageHash: fill.imageHash
+        });
+      }
+      // Otros tipos de relleno...
+    });
+  }
+  
+  // Extraer bordes
+  if (node.strokes && node.strokes.length > 0) {
+    nodeData.properties.styles.border = {
+      weight: node.strokeWeight,
+      align: node.strokeAlign,
+      strokes: node.strokes.map(stroke => ({
+        type: stroke.type,
+        color: stroke.type === "SOLID" ? {
+          r: stroke.color.r,
+          g: stroke.color.g,
+          b: stroke.color.b,
+          a: stroke.opacity ?? 1
+        } : null
+      }))
+    };
+  }
+  
+  // Extraer efectos (sombras, etc.)
+  if (node.effects) {
+    node.effects.forEach(effect => {
+      if (effect.visible === false) return;
+      
+      if (effect.type === "DROP_SHADOW") {
+        nodeData.properties.effects.push({
+          type: "shadow",
+          offset: {
+            x: effect.offset.x,
+            y: effect.offset.y
+          },
+          radius: effect.radius,
+          color: {
+            r: effect.color.r,
+            g: effect.color.g,
+            b: effect.color.b,
+            a: effect.opacity ?? 1
+          }
+        });
+      }
+      // Otros tipos de efectos...
+    });
+  }
+}
+Este es un ejemplo básico de cómo podría estructurarse e implementarse el plugin. Muestra la organización de archivos, la separación de estilos, y ejemplos concretos de cómo funcionaría la comunicación entre el código principal y la UI, así como el procesamiento de los nodos de Figma.

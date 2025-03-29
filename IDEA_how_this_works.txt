@@ -1,0 +1,55 @@
+Claro, te explico cómo sería el flujo:
+
+El usuario seleccionará un frame cualquiera en Figma. Luego, en nuestro plugin, se mostrará una interfaz moderna y elegante. En esta interfaz habrá un botón llamado "Select this frame". Al hacer clic en él, se abrirá un modal donde aparecerán dos opciones principales: 
+
+1. Un menú desplegable (select) para que el usuario elija qué tipo de componente es el frame seleccionado.
+
+2. Un grupo de botones de opción (radio buttons) con categorías como "atoms", "molecules" y "organisms".
+
+Una vez seleccionadas estas opciones, automáticamente se generará una vista previa en tiempo real del código correspondiente a ese frame. Este código incluirá su estructura semántica y elementos como etiquetas, textos, etc., directamente interpretados desde los nodos de Figma.
+
+Cuando el usuario confirme, el modal se cerrará y aparecerá un preview visual atractivo del componente exacto. Este preview reflejará cómo se han extraído los nodos de Figma y transformado en código semántico. 
+
+El segundo paso permitirá personalizar la accesibilidad del componente según las necesidades del usuario. Aquí podrá configurar aspectos relacionados con WCAG, como atributos ARIA, tipos, y otros elementos para mayor personalización.
+
+El tercer y último paso será exportar el componente o copiar el código generado. Este código estará disponible en formatos como HTML, React o Web Component, junto con su respectivo CSS. Todos los estilos (márgenes, flexbox, colores, tamaños, etc.) serán extraídos directamente de los nodos de Figma para garantizar precisión y consistencia.
+
+
+
+
+Selección inicial:
+
+El usuario selecciona un frame en Figma
+Abre el plugin que muestra una interfaz moderna y elegante
+Hace clic en "Select this frame" para iniciar el proceso
+
+
+Configuración del componente (Modal):
+
+Se abre un modal con:
+
+Un menú desplegable para elegir el tipo específico de componente
+Radio buttons para categorizar como "atoms", "molecules" u "organisms"
+
+
+El sistema genera una vista previa en tiempo real del código basado en las selecciones
+
+
+Preview visual:
+
+Tras confirmar, se muestra un preview visual del componente
+Este preview refleja cómo se han extraído y convertido los nodos de Figma
+
+
+Personalización de accesibilidad:
+
+El usuario puede configurar aspectos de accesibilidad
+Opciones para ajustar atributos ARIA, cumplimiento WCAG, etc.
+Personalización adicional según necesidades específicas
+
+
+Exportación del código:
+
+Último paso: exportar o copiar el código generado
+Disponible en múltiples formatos (HTML, React, Web Components)
+Incluye CSS con todos los estilos extraídos de Figma (márgenes, flexbox, colores, tamaños)
